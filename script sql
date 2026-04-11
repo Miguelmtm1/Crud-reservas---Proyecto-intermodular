@@ -1,0 +1,137 @@
+-- Miguel Ángel Tortosa Mira
+-- (UT5) Modelo Físico en SQL 
+
+USE proyecto_intermodular;
+
+-- Borrar tablas en orden inverso por dependencias
+DROP TABLE IF EXISTS RESERVA;
+DROP TABLE IF EXISTS DISPONIBLEEN;
+DROP TABLE IF EXISTS HORARIO;
+DROP TABLE IF EXISTS RECURSO;
+DROP TABLE IF EXISTS USUARIONORMAL;
+DROP TABLE IF EXISTS ADMINISTRADOR;
+DROP TABLE IF EXISTS USUARIO;
+
+-- Crear tablas
+CREATE TABLE USUARIO (
+    id_usuario INT AUTO_INCREMENT PRIMARY KEY,
+    correo_electronico VARCHAR(100) NOT NULL UNIQUE,
+    contraseña VARCHAR(100) NOT NULL,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    fecha_nacimiento DATE,
+    tipo_usuario ENUM('Administrador','Normal') NOT NULL
+);
+
+CREATE TABLE ADMINISTRADOR (
+    id_usuario INT PRIMARY KEY,
+    telefono_guardia VARCHAR(20) NOT NULL,
+    -- ON DELETE CASCADE: si se borra un usuario, se borra su perfil de administrador
+    -- ON UPDATE CASCADE: si se cambia el id_usuario, se actualiza automáticamente
+    CONSTRAINT fk_admin_usuario FOREIGN KEY (id_usuario)
+        REFERENCES USUARIO(id_usuario)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE 
+);
+
+CREATE TABLE USUARIONORMAL (
+    id_usuario INT PRIMARY KEY,
+    direccion VARCHAR(200),
+    telefono_movil VARCHAR(20),
+    fotografia VARCHAR(255),
+    -- ON DELETE CASCADE: si se borra un usuario, se borra su perfil normal
+    CONSTRAINT fk_normal_usuario FOREIGN KEY (id_usuario)
+        REFERENCES USUARIO(id_usuario)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+CREATE TABLE RECURSO (
+    id_recurso INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    ubicacion VARCHAR(200),
+    capacidad INT
+);
+
+CREATE TABLE HORARIO (
+    id_horario INT AUTO_INCREMENT PRIMARY KEY,
+    dia_semana ENUM('Lunes','Martes','Miercoles','Jueves','Viernes','Sabado','Domingo') NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+    CONSTRAINT chk_horas CHECK (hora_fin > hora_inicio)
+);
+
+CREATE TABLE DISPONIBLEEN (
+    id_recurso INT NOT NULL,
+    id_horario INT NOT NULL,
+    PRIMARY KEY (id_recurso, id_horario),
+    -- ON DELETE CASCADE: si se borra un recurso u horario, se borra la disponibilidad
+    CONSTRAINT fk_disp_recurso FOREIGN KEY (id_recurso)
+        REFERENCES RECURSO(id_recurso)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_disp_horario FOREIGN KEY (id_horario)
+        REFERENCES HORARIO(id_horario)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE RESERVA (
+    id_recurso INT NOT NULL,
+    id_reserva_local INT NOT NULL,
+    id_usuario INT NOT NULL,
+    fecha DATE NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+    coste DECIMAL(10,2),
+    numero_plazas INT,
+    motivo TEXT,
+    observaciones TEXT,
+    PRIMARY KEY (id_recurso, id_reserva_local),
+    -- ON DELETE CASCADE: si se borra un recurso o usuario, se borran sus reservas
+    CONSTRAINT fk_reserva_recurso FOREIGN KEY (id_recurso)
+        REFERENCES RECURSO(id_recurso)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_reserva_usuario FOREIGN KEY (id_usuario)
+        REFERENCES USUARIONORMAL(id_usuario)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Insertar datos (5 filas por tabla)
+INSERT INTO USUARIO (correo_electronico, contraseña, nombre, fecha_nacimiento, tipo_usuario) VALUES
+('Miguel_admin@gmail.com','KjH6798','Miguel','1992-02-28','Administrador'),
+('PacoElche@Hotmail.com','Contraseña500','Paco','1900-05-03','Administrador'),
+('ElenaMDk@gmail.com','HHJhHh9776','Elena','1955-11-29','Normal'),
+('Ilicitano84@hotmail.com','33344jh','Manuel','2000-01-02','Normal'),
+('MariaTR@gmail.com','4g4jgh4f5f','Maria','1994-03-03','Normal');
+
+INSERT INTO ADMINISTRADOR (id_usuario, telefono_guardia) VALUES
+(1,'600111222'),
+(2,'600333444');
+
+INSERT INTO USUARIONORMAL (id_usuario, direccion, telefono_movil, fotografia) VALUES
+(3,'Calle Mayor, 10','618444999','foto1.jpg'),
+(4,'Calle Menor, 5','618333333','foto2.jpg'),
+(5,'Calle Media, 7','666666666','foto3.jpg');
+
+INSERT INTO RECURSO (nombre, descripcion, ubicacion, capacidad) VALUES 
+('Sala Reuniones','Sala con proyector','Edificio A',20),
+('Laboratorio','Laboratorio de ciencias','Edificio B',30),
+('Biblioteca','Zona de estudio','Edificio A',50),
+('Gimnasio','Espacio deportivo','Edificio C',40),
+('Aula Magna','Sala de conferencias','Edificio B',60);
+
+INSERT INTO HORARIO (dia_semana, hora_inicio, hora_fin) VALUES
+('Lunes','09:00','11:00'),
+('Martes','10:00','12:00'),
+('Miercoles','15:00','17:00'),
+('Jueves','08:00','10:00'),
+('Viernes','13:00','15:00');
+
+INSERT INTO DISPONIBLEEN (id_recurso, id_horario) VALUES
+(1,1),(2,2),(3,3),(4,4),(5,5);
+
+INSERT INTO RESERVA (id_recurso, id_reserva_local, id_usuario, fecha, hora_inicio, hora_fin, coste, numero_plazas, motivo, observaciones) VALUES
+(1,1,3,'2025-11-28','09:00','11:00',50.00,10,'Reunion de equipo','Sin incidencias'),
+(2,1,4,'2025-11-29','10:00','12:00',0.00,25,'Clase práctica',''),
+(3,1,5,'2025-11-30','15:00','17:00',0.00,5,'Estudio en grupo',''),
+(4,1,3,'2025-12-01','08:00','10:00',20.00,15,'Entrenamiento',''),
+(5,1,4,'2025-12-02','13:00','15:00',100.00,50,'Conferencia','Con invitado especial');
